@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="http://yui.yahooapis.com/3.5.0pr2/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+<script type="text/x-template" id="loginFormTpl">
+    <form id="loginForm" action="login">
+        <label>login: <input type="text" name="login" value="{{login}}" /></label><br />
+        <label>pass : <input type="password" name="password" value="{{password}}" /></label><br />
+        <label>service: <select name="country">
+            <option value="228">testwebapi.pl</option>
+            <option value="1">allegro.pl</option>
+        </select></label><br />
+    <button type="submit">Login</button><br />
+    </form>
+</script>
+<div id='console'></div>
+<div id="allegroApp"></div>
+<script type="text/javascript">
+    YUI({
+        filter: 'raw',
+        modules: {
+            'io-soap': {
+                fullpath: 'js/io-soap/io-soap.js'
+                ,requires:['io-base','io-xdr']
+                ,optional:['event-custom']
+            }
+        }
+    }).use("io", "console", "querystring-stringify", "app", "router", 'node-event-delegate', 'io-soap', 'handlebars', function(Y)
+    {
+        // support crossdomain soap requests
+        var soapCfg = {xdr: {use: 'native', dataType: 'xml'}};
+        var baseURL = window.location.pathname.split('/');
+        baseURL.pop();
+        baseURL = baseURL.join('/');
+        var appConfig = {
+            wsdl: 'http://api.allewidget.pl/uploader.php',
+            apiKey: '', // ENTER YOUR webapi key
+            path: baseURL
+        };
+
+        if(window.location.protocol !== 'file:')
+        {
+            soapCfg.xdr.use = 'flash';
+            //Configure the cross-domain protocol:
+            var xdrConfig = {
+                id:'flash', //We'll reference this id in the xdr configuration of our transaction.
+                src: appConfig.path+'/js/yui/build/io-xdr/io.swf' //Relative path to the .swf file from the current page.
+            };
+            Y.io.transport(xdrConfig);
+        }
+
+        var soap = Y.io.soap(appConfig.wsdl, soapCfg);
+
+        var loginFormView = Y.Base.create('loginFormView', Y.View, [], {
+            // Compiles the HomePage Template into a reusable Handlebars template.
+            template: Y.Handlebars.compile(Y.one('#loginFormTpl').getContent()),
+            events: {
+                'button': {
+                    click: 'changeUser'
+                }
+            },
+
+            initializer: function () {
+                // The `changeUser` event is fired when the user chooses a GitHub user
+                // to start browsing. This event will bubble up to the `ContributorsApp`
+                // when this view is the app's `activeView`.
+                this.publish('changeUser', {preventable: false});
+            },
+
+            create: function (container) {
+                    // Adds CSS class to the container node.
+                    return Y.one(container);//.addClass('home-page');
+            },
+
+            render: function () {
+                // Retrieves just the `login` of the `User` model instance and applies
+                // it to the HomePage Template.
+                var user    = this.get('model'),
+                    content = this.template(user);
+
+                // Sets the resulting HTML as the contents of this view's container.
+                this.get('container').setContent(content);
+
+                return this;
+            },
+
+            // Called when the user clicks the "Show Repos" button. This will retrieve
+            // the GitHub username from the text `<input>` and fire the `changeUser`
+            // event, passing on the username to the app.
+            changeUser: function (e) {
+                e.preventDefault();
+                var login = this.get('container').one('input[name="login"]').get('value'),
+                password = this.get('container').one('input[name="password"]').get('value'),
+                country = this.get('container').one('select[name="country"]').get('value');
+                if (login && password) {
+                    var context = {login: login, password: password, country: country};
+                    this.fire('changeUser', context);
+                }
+            }
+
+        });
+
+        var allegroApp = new Y.Base.create('allegroApp', Y.App, [], {
+            views: {
+                loginForm: {
+                    type: loginFormView
+                }
+            },
+            initializer: function () {
+                // When a user navigates to different "pages" within our app, the
+                // `navigate` event will fire; we can listen to this event and show some
+                // indication that the app is busy loading data.
+                this.on('navigate', this.indicateLoading);
+
+                // Here we register a listener for the `HomePageView`'s `changeUser`
+                // event. When the `HomePageView` is the `activeView`, its events will
+                // bubble up to this app instance.
+                this.on('*:changeUser', this.navigateToUser);
+
+                // Once our app is ready, we'll either dispatch to our route-handlers if
+                // the current URL matches one of our routes, or we'll simply show the
+                // `HomePageView`.
+                this.once('ready', function (e) {
+                    if (this.hasRoute(this.getPath())) {
+                        this.dispatch();
+                    } else {
+                        this.showHomePage();
+                    }
+                });
+            },
+            indicateLoading: function (e) {
+                this.get('activeView').get('container').addClass('loading');
+            },
+            // This is called when the URL is "/" and will show our app's home page.
+            showHomePage: function (req) {
+                this.showView('loginForm', {model: this.get('user')});
+            },
+
+            showUserPage: function(req) {
+
+            },
+
+            // When called, this will navigate the application to the user-page for the
+            // GitHub username specified on the event facade. This will cause our app to
+            // dispatch to its route-handlers along with updating the URL.
+            navigateToUser: function (e) {
+                var options = null;
+                var query = Y.QueryString.stringify({login:e.login,password:e.password,country:e.country});
+                this.navigate('login?'+query, options);
+            },
+
+            /**
+             * process data from doLogin (handleLogin)
+             *
+             * @param req
+             * @param res
+             * @param next
+             */
+            handleSession: function(req,res,next) {
+                var q = req.query;
+                var user = this.get('user');
+                user.session = q['session-handle-part'];
+                this.set('user', user);
+                Y.log(q['session-handle-part']);
+            },
+
+            /**
+             * get the login,password,country arguments required by doLogin
+             * calls doQuerySysStatus to obtain 'ver-key' also needed by doLogin
+             * call doLogin with all data on success the controlle is passed to /session
+             *
+             * @param req
+             * @param res
+             * @param next
+             */
+            handleLogin: function(req, res, next) {
+                var pl = {'sysvar':1,
+                    'country-id':req.query.country,
+                    'webapi-key':appConfig.apiKey
+                }, self = this;
+
+                soap.call({method:'doQuerySysStatus', 'params': pl, on: {
+                    success: function(e) {
+                        var result = e.result;
+                        var pl = {
+                            'user-login':req.query.login
+                            ,'user-password':req.query.password
+                            ,'country-code':req.query.country
+                            ,'webapi-key':appConfig.apiKey
+                            ,'local-version':result['ver-key']
+                        };
+                        soap.call({method:'doLogin', params: pl, on: {
+                            success: function(e) {
+                                self.set('user', {login:pl['user-login'], country: pl['country-code']});
+                                var query = Y.QueryString.stringify(e.result);
+                                self.navigate('session?'+query);
+                            },
+                            failure: function(e) {
+                                Y.log(e.response.statusText);
+                            }
+                        }});
+                    },
+                    failure:function(e) {
+                        if(e.error)
+                        {
+                            Y.log(e.error.faultactor, 'error', 'allegroApp');
+                            Y.log(e.error.faultcode, 'error', 'allegroApp');
+                            Y.log(e.error.faultstring, 'error', 'allegroApp');
+                        }
+                        if(e.response.statusText)
+                            Y.log(e.response.statusText);
+                        else
+                            Y.log('doQuerySysStatus failed');
+                    }}
+                });
+            }
+        }, {
+            ATTRS: {
+                routes: {
+                    value: [
+                        {path: '/',                     callback: 'showHomePage'},
+                        {path: /^\/login?.*$/,          callback: 'handleLogin'},
+                        {path: /^\/session?.*$/,        callback: 'handleSession'}
+                    ]
+                },
+
+                user: { value: {'login':'',password:''}}
+            }
+        });
+
+        Y.on('allegroApp:ready', function() {
+            Y.log('allegroApp:ready');
+            new allegroApp({
+                // We force this to false for this example app because there is no server.
+                serverRouting: false
+                ,root: baseURL
+                ,container   : '#allegroApp'
+                ,linkSelector: '#allegroApp a'
+                ,user : {'login':'fkowal-api',password:'qwe123'}
+            }).render();
+        });
+        if(soapCfg.xdr.use == 'native')
+        {
+            Y.fire('allegroApp:ready', {});
+        }
+        else
+        {
+            Y.on('io:xdrReady', function (e) {
+                Y.log('io:xdrReady', 'info', 'example');
+
+                Y.fire('allegroApp:ready', {});
+            });
+        }
+        new Y.Console().render('#console');
+
+    });
+</script>
+</body>
+</html>
