@@ -27,7 +27,7 @@
                 ,optional:['event-custom']
             }
         }
-    }).use("io", "console", "querystring-stringify", "app", "router", 'node-event-delegate', 'io-soap', 'handlebars', function(Y)
+    }).use("io", "console", "querystring-stringify", "app", 'io-soap', 'handlebars', function(Y)
     {
         // support crossdomain soap requests
         var soapCfg = {xdr: {use: 'native', dataType: 'xml'}};
@@ -35,8 +35,10 @@
         baseURL.pop();
         baseURL = baseURL.join('/');
         var appConfig = {
+            //wsdl: 'http://webapi.allegro.pl.mkowalski.dev2.dc2/uploader.php',
+            //apiKey: 'aebc257e6',
             wsdl: 'http://api.allewidget.pl/uploader.php',
-            apiKey: '', // ENTER YOUR webapi key
+            apiKey: '02ee4e00b',
             path: baseURL
         };
 
