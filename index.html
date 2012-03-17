@@ -2,6 +2,7 @@
 <html>
 <head>
     <script type="text/javascript" src="http://yui.yahooapis.com/3.5.0pr2/build/yui/yui-min.js"></script>
+	<!--<script type="text/javascript" src="http://localhost:8003/yui3?build/yui/yui-min.js"></script>-->
 </head>
 <body class="yui3-skin-sam">
 <script type="text/x-template" id="loginFormTpl">
@@ -15,6 +16,9 @@
     <button type="submit">Login</button><br />
     </form>
 </script>
+<script type="text/x-template" id="userPageView">
+	<div>Welcome <b>{{user.login}}</b> you're logged in!</div>
+</script>
 <div id='console'></div>
 <div id="allegroApp"></div>
 <script type="text/javascript">
@@ -27,6 +31,10 @@
                 ,optional:['event-custom']
             }
         }
+//		,comboBase: 'http://localhost:8003/yui3?'
+//		,combine  : true
+//		,root     : 'build/'
+//		,maxURLLength : 512
     }).use("io", "console", "querystring-stringify", "app", 'io-soap', 'handlebars', function(Y)
     {
         // support crossdomain soap requests
@@ -54,6 +62,20 @@
         }
 
         var soap = Y.io.soap(appConfig.wsdl, soapCfg);
+
+		var userPageView = Y.Base.create('userPageView', Y.View, [], {
+			template: Y.Handlebars.compile(Y.one('#userPageView').getContent()),
+
+			render: function() {
+				var user = this.get('model'),
+					content = this.template({user:user});
+
+				// Sets the resulting HTML as the contents of this view's container.
+				this.get('container').setContent(content);
+
+				return this;
+			}
+		});
 
         var loginFormView = Y.Base.create('loginFormView', Y.View, [], {
             // Compiles the HomePage Template into a reusable Handlebars template.
@@ -108,7 +130,10 @@
             views: {
                 loginForm: {
                     type: loginFormView
-                }
+                },
+				userPage: {
+					type: userPageView
+				}
             },
             initializer: function () {
                 // When a user navigates to different "pages" within our app, the
@@ -133,7 +158,9 @@
                 });
             },
             indicateLoading: function (e) {
-                this.get('activeView').get('container').addClass('loading');
+				var activeView = this.get('activeView');
+				if(activeView)
+                	activeView.get('container').addClass('loading');
             },
             // This is called when the URL is "/" and will show our app's home page.
             showHomePage: function (req) {
@@ -141,7 +168,7 @@
             },
 
             showUserPage: function(req) {
-
+				this.showView('userPage', {model: this.get('user')});
             },
 
             // When called, this will navigate the application to the user-page for the
@@ -166,6 +193,7 @@
                 user.session = q['session-handle-part'];
                 this.set('user', user);
                 Y.log(q['session-handle-part']);
+				this.navigate('user', {replace:true});
             },
 
             /**
@@ -197,7 +225,7 @@
                             success: function(e) {
                                 self.set('user', {login:pl['user-login'], country: pl['country-code']});
                                 var query = Y.QueryString.stringify(e.result);
-                                self.navigate('session?'+query);
+                                self.navigate('session?'+query, {replace:true});
                             },
                             failure: function(e) {
                                 Y.log(e.response.statusText);
@@ -217,14 +245,19 @@
                             Y.log('doQuerySysStatus failed');
                     }}
                 });
-            }
+            },
+
+			handleUser: function(req, res, next) {
+				this.showUserPage(req);
+			}
         }, {
             ATTRS: {
                 routes: {
                     value: [
                         {path: '/',                     callback: 'showHomePage'},
                         {path: /^\/login?.*$/,          callback: 'handleLogin'},
-                        {path: /^\/session?.*$/,        callback: 'handleSession'}
+                        {path: /^\/session?.*$/,        callback: 'handleSession'},
+						{path: '/user',					callback: 'handleUser'}
                     ]
                 },
 
