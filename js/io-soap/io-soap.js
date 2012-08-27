@@ -1,13 +1,6 @@
-/*****************************************************************************\
-
- Javascript "SOAP Client" library
-
- @version: 2.1 - 2006.09.08
- @author: Matteo Casati - http://www.guru4.net/
-
- \*****************************************************************************/
-
+/*global YUI:true */
 YUI.add('io-soap', function (Y) {
+    "use strict";
     var SOAPClient_cacheWsdl = [], _typeElementPrefix = "xsd:", _responseMethodPrefix = "typens:";
 
     function _toXML(_pl) {
@@ -34,15 +27,15 @@ YUI.add('io-soap', function (Y) {
 
                     var year = o.getFullYear().toString();
                     var month = (o.getMonth() + 1).toString();
-                    month = (month.length == 1) ? "0" + month : month;
+                    month = (month.length === 1) ? "0" + month : month;
                     var date = o.getDate().toString();
-                    date = (date.length == 1) ? "0" + date : date;
+                    date = (date.length === 1) ? "0" + date : date;
                     var hours = o.getHours().toString();
-                    hours = (hours.length == 1) ? "0" + hours : hours;
+                    hours = (hours.length === 1) ? "0" + hours : hours;
                     var minutes = o.getMinutes().toString();
-                    minutes = (minutes.length == 1) ? "0" + minutes : minutes;
+                    minutes = (minutes.length === 1) ? "0" + minutes : minutes;
                     var seconds = o.getSeconds().toString();
-                    seconds = (seconds.length == 1) ? "0" + seconds : seconds;
+                    seconds = (seconds.length === 1) ? "0" + seconds : seconds;
                     var milliseconds = o.getMilliseconds().toString();
                     var tzminutes = Math.abs(o.getTimezoneOffset());
                     var tzhours = 0;
@@ -50,11 +43,10 @@ YUI.add('io-soap', function (Y) {
                         tzhours++;
                         tzminutes -= 60;
                     }
-                    tzminutes = (tzminutes.toString().length == 1) ? "0" + tzminutes.toString() : tzminutes.toString();
-                    tzhours = (tzhours.toString().length == 1) ? "0" + tzhours.toString() : tzhours.toString();
+                    tzminutes = (tzminutes.toString().length === 1) ? "0" + tzminutes.toString() : tzminutes.toString();
+                    tzhours = (tzhours.toString().length === 1) ? "0" + tzhours.toString() : tzhours.toString();
                     var timezone = ((o.getTimezoneOffset() < 0) ? "+" : "-") + tzhours + ":" + tzminutes;
-                    s +=
-                        year + "-" + month + "-" + date + "T" + hours + ":" + minutes + ":" + seconds + "." + milliseconds + timezone;
+                    s += year + "-" + month + "-" + date + "T" + hours + ":" + minutes + ":" + seconds + "." + milliseconds + timezone;
                 }
                 // Array
                 else if (o.constructor.toString().indexOf("function Array()") > -1) {
@@ -89,7 +81,9 @@ YUI.add('io-soap', function (Y) {
                 // Object or custom function
                 else {
                     for (p in o) {
-                        s += "<" + p + ">" + _serializeParam(o[p]) + "</" + p + ">";
+                        if (o.hasOwnProperty(p)) {
+                            s += "<" + p + ">" + _serializeParam(o[p]) + "</" + p + ">";
+                        }
                     }
                 }
                 break;
@@ -148,11 +142,11 @@ YUI.add('io-soap', function (Y) {
         //Y.log('_sendSoapRequest'+cfg.method,'info','io-soap');
         if (cfg.method) {
             // get namespace
-            var ns = (wsdl.documentElement.attributes["targetNamespace"] + "" == "undefined") ? wsdl.documentElement.attributes.getNamedItem("targetNamespace").nodeValue : wsdl.documentElement.attributes["targetNamespace"].value;
+            var ns = (wsdl.documentElement.attributes.targetNamespace + "" === "undefined") ? wsdl.documentElement.attributes.getNamedItem("targetNamespace").nodeValue : wsdl.documentElement.attributes.targetNamespace.value;
             // build SOAP request
             var sr = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + "<soap:Envelope " + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" " + "xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" " + "xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">" + "<soap:Body>" + "<" + cfg.method + " xmlns=\"" + ns + "\">" + _toXML(cfg.params) + "</" + cfg.method + "></soap:Body></soap:Envelope>";
             // send request
-            var soapaction = ((ns.lastIndexOf("/") != ns.length - 1) ? ns + "/" : ns) + cfg.method;
+            var soapaction = ((ns.lastIndexOf("/") !== ns.length - 1) ? ns + "/" : ns) + cfg.method;
             var result = Y.io(url, {
                 'method': "POST",
                 'data': sr,
@@ -175,11 +169,12 @@ YUI.add('io-soap', function (Y) {
                     }
                 },
                 sync: cfg.sync,
-                "arguments": cfg.arguments
+                "arguments": cfg['arguments']
             });
 
             return result;
         }
+        return null;
     }
 
     function _onSendSoapRequest(cfg, wsdl, req, args) {
@@ -225,6 +220,7 @@ YUI.add('io-soap', function (Y) {
         if (!cfg.sync) {
             return o;
         }
+        return null;
     }
 
     function _soapresult2object(node, wsdl) {
@@ -236,6 +232,7 @@ YUI.add('io-soap', function (Y) {
     function _node2object(node, wsdlTypes) {
         //Y.log('_node2object ','info','io.soap.js');
         // null node
+        var _typePrefix = "xsi:", i, child, attrType, type, isarray, obj, p, l;
         if (node === null) {
             return null;
         }
@@ -244,12 +241,12 @@ YUI.add('io-soap', function (Y) {
             return _extractValue(node, wsdlTypes);
         }
         // leaf node
-        if (node.childNodes.length == 1 && (node.childNodes[0].nodeType == 3 || node.childNodes[0].nodeType == 4)) {
+        if (node.childNodes.length === 1 && (node.childNodes[0].nodeType === 3 || node.childNodes[0].nodeType === 4)) {
             return _node2object(node.childNodes[0], wsdlTypes);
         }
-        var _typePrefix = "xsi:", i, child;
-        var attrType = node.attributes.getNamedItem(_typePrefix + "type");
-        if (attrType && attrType.nodeValue == _typeElementPrefix + "string" && node.childNodes.length > 1) {
+
+        attrType = node.attributes.getNamedItem(_typePrefix + "type");
+        if (attrType && attrType.nodeValue === _typeElementPrefix + "string" && node.childNodes.length > 1) {
             var value = '';
             for (i = 0; i < node.childNodes.length; i++) {
                 child = node.childNodes[i];
@@ -257,26 +254,26 @@ YUI.add('io-soap', function (Y) {
             }
             return value;
         }
-        var type = _getTypeFromWsdl(node.nodeName, wsdlTypes).toLowerCase();
-        var isarray = type.indexOf("arrayof") != -1;
+        type = _getTypeFromWsdl(node.nodeName, wsdlTypes).toLowerCase();
+        isarray = type.indexOf("arrayof") !== -1;
         if (!isarray && node.attributes.getNamedItem(_typePrefix + "type")) {
             type = node.attributes.getNamedItem(_typePrefix + "type").nodeValue;
-            isarray = type.toLowerCase().indexOf('array') != -1;
+            isarray = type.toLowerCase().indexOf('array') !== -1;
 
         }
         // object node
         if (!isarray) {
-            var obj = null;
+            obj = null;
             if (node.hasChildNodes()) {
                 obj = {};
             }
             for (i = 0; i < node.childNodes.length; i++) {
                 child = node.childNodes[i];
-                if (child.nodeType == 3 && _extractValue(child, wsdlTypes) == "\n") {
+                if (child.nodeType === 3 && _extractValue(child, wsdlTypes) === "\n") {
                     continue;
                 }
                 if (child.nodeName) {
-                    var p = _node2object(child, wsdlTypes);
+                    p = _node2object(child, wsdlTypes);
                     obj[child.nodeName] = p;
                 }
             }
@@ -285,10 +282,10 @@ YUI.add('io-soap', function (Y) {
         // list node
         else {
             // create node ref
-            var l = [];
+            l = [];
             for (i = 0; i < node.childNodes.length; i++) {
                 child = node.childNodes[i];
-                if (child.nodeType == 3 && _extractValue(child, wsdlTypes) == "\n") {
+                if (child.nodeType === 3 && _extractValue(child, wsdlTypes) === "\n") {
                     continue;
                 }
                 l[l.length] = _node2object(child, wsdlTypes);
@@ -305,11 +302,10 @@ YUI.add('io-soap', function (Y) {
             type = node.parentNode.attributes.getNamedItem(_typePrefix + "type").nodeValue;
         }
         switch (type) {
-            default:
             case _typeElementPrefix + "string":
                 return (value !== null) ? value + "" : "";
             case _typeElementPrefix + "boolean":
-                return value + "" == "true";
+                return value + "" === "true";
             case _typeElementPrefix + "int":
             case _typeElementPrefix + "long":
                 return (value !== null) ? parseInt(value + "", 10) : 0;
@@ -320,13 +316,16 @@ YUI.add('io-soap', function (Y) {
                     return null;
                 } else {
                     value = value + "";
-                    value = value.substring(0, (value.lastIndexOf(".") == -1 ? value.length : value.lastIndexOf(".")));
+                    value = value.substring(0, (value.lastIndexOf(".") === -1 ? value.length : value.lastIndexOf(".")));
                     value = value.replace(/T/gi, " ");
                     value = value.replace(/-/gi, "/");
                     var d = new Date();
                     d.setTime(Date.parse(value));
                     return d;
                 }
+                break;
+            default:
+                return (value !== null) ? value + "" : "";
         }
     }
 
@@ -346,8 +345,8 @@ YUI.add('io-soap', function (Y) {
                     wsdlTypes[ell[i].attributes.getNamedItem("name").nodeValue] =
                         ell[i].attributes.getNamedItem("type").nodeValue;
                 } else {
-                    if (ell[i].attributes["name"] !== null && ell[i].attributes["type"] !== null) {
-                        wsdlTypes[ell[i].attributes["name"].value] = ell[i].attributes["type"].value;
+                    if (ell[i].attributes.name !== null && ell[i].attributes.type !== null) {
+                        wsdlTypes[ell[i].attributes.name.value] = ell[i].attributes.type.value;
                     }
                 }
             }
@@ -361,8 +360,8 @@ YUI.add('io-soap', function (Y) {
                             ell[i].attributes.getNamedItem("type").nodeValue;
                     }
                 } else {
-                    if (ell[i].attributes["name"] !== null && ell[i].attributes["type"] !== null) {
-                        wsdlTypes[ell[i].attributes["name"].value] = ell[i].attributes["type"].value;
+                    if (ell[i].attributes.name !== null && ell[i].attributes.type !== null) {
+                        wsdlTypes[ell[i].attributes.name.value] = ell[i].attributes.type.value;
                     }
                 }
             }
@@ -372,7 +371,7 @@ YUI.add('io-soap', function (Y) {
 
     function _getTypeFromWsdl(elementname, wsdlTypes) {
         var type = wsdlTypes[elementname] + "";
-        return (type == "undefined") ? "" : type;
+        return (type === "undefined") ? "" : type;
     }
 
     function _getElementsByTagName(document, tagName) {
@@ -415,12 +414,7 @@ YUI.add('io-soap', function (Y) {
     }
 
     function _call(uri, cfg) {
-        if (!cfg.sync) {
-            _loadWsdl(uri, cfg);
-        } else {
-            return _loadWsdl(uri, cfg);
-        }
-
+        return _loadWsdl(uri, cfg);
     }
 
     /**

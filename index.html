@@ -1,79 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <script type="text/javascript" src="http://yui.yahooapis.com/3.5.0pr2/build/yui/yui-min.js"></script>
-	<!--<script type="text/javascript" src="http://localhost:8003/yui3?build/yui/yui-min.js"></script>-->
+    <!--<script type="text/javascript" src="http://localhost:8003/yui3?build/yui/yui-min.js"></script>-->
 </head>
 <body class="yui3-skin-sam">
 <script type="text/x-template" id="loginFormTpl">
     <form id="loginForm" action="login">
-        <label>login: <input type="text" name="login" value="{{login}}" /></label><br />
-        <label>pass : <input type="password" name="password" value="{{password}}" /></label><br />
+        <label>login: <input type="text" name="login" value="{{login}}"/></label><br/>
+        <label>pass : <input type="password" name="password" value="{{password}}"/></label><br/>
         <label>service: <select name="country">
             <option value="228">testwebapi.pl</option>
             <option value="1">allegro.pl</option>
-        </select></label><br />
-    <button type="submit">Login</button><br />
+        </select></label><br/>
+        <button type="submit">Login</button>
+        <br/>
     </form>
 </script>
 <script type="text/x-template" id="userPageView">
-	<div>Welcome <b>{{user.login}}</b> you're logged in!</div>
+    <div>Welcome <b>{{user.login}}</b> you're logged in!</div>
 </script>
 <div id='console'></div>
 <div id="allegroApp"></div>
 <script type="text/javascript">
-    YUI({
-        filter: 'raw',
-        modules: {
-            'io-soap': {
-                fullpath: 'js/io-soap/io-soap.js'
-                ,requires:['io-base','io-xdr']
-                ,optional:['event-custom']
-            }
+YUI({
+    filter: 'raw',
+    modules: {
+        'io-soap': {
+            fullpath: 'js/io-soap/io-soap.js', requires: ['io-base', 'io-xdr'], optional: ['event-custom']
         }
-//		,comboBase: 'http://localhost:8003/yui3?'
-//		,combine  : true
-//		,root     : 'build/'
-//		,maxURLLength : 512
-    }).use("io", "console", "querystring-stringify", "app", 'io-soap', 'handlebars', function(Y)
-    {
+    }
+    //    ,comboBase: 'http://localhost:8003/yui3?'
+    //    ,combine  : true
+    //    ,root     : 'build/'
+    //    ,maxURLLength : 512
+}).use("io", "console", "querystring-stringify", "app", 'io-soap', 'handlebars', function (Y) {
         // support crossdomain soap requests
         var soapCfg = {xdr: {use: 'native', dataType: 'xml'}};
         var baseURL = window.location.pathname.split('/');
         baseURL.pop();
         baseURL = baseURL.join('/');
         var appConfig = {
-            wsdl: 'http://api.allewidget.pl/uploader.php',
+            wsdl: 'https://webapi.allegro.pl/uploader.php',
             apiKey: '02ee4e00b',
             path: baseURL
         };
 
-        if(window.location.protocol !== 'file:')
-        {
+        if (0 && window.location.protocol !== 'file:') {
             soapCfg.xdr.use = 'flash';
             //Configure the cross-domain protocol:
             var xdrConfig = {
-                id:'flash', //We'll reference this id in the xdr configuration of our transaction.
-                src: appConfig.path+'/js/yui/build/io-xdr/io.swf' //Relative path to the .swf file from the current page.
+                id: 'flash', //We'll reference this id in the xdr configuration of our transaction.
+                src: appConfig.path + '/js/yui/build/io-xdr/io.swf' //Relative path to the .swf file from the current page.
             };
             Y.io.transport(xdrConfig);
         }
 
         var soap = Y.io.soap(appConfig.wsdl, soapCfg);
 
-		var userPageView = Y.Base.create('userPageView', Y.View, [], {
-			template: Y.Handlebars.compile(Y.one('#userPageView').getContent()),
+        var userPageView = Y.Base.create('userPageView', Y.View, [], {
+            template: Y.Handlebars.compile(Y.one('#userPageView').getContent()),
 
-			render: function() {
-				var user = this.get('model'),
-					content = this.template({user:user});
+            render: function () {
+                var user = this.get('model'),
+                    content = this.template({user: user});
 
-				// Sets the resulting HTML as the contents of this view's container.
-				this.get('container').setContent(content);
+                // Sets the resulting HTML as the contents of this view's container.
+                this.get('container').setContent(content);
 
-				return this;
-			}
-		});
+                return this;
+            }
+        });
 
         var loginFormView = Y.Base.create('loginFormView', Y.View, [], {
             // Compiles the HomePage Template into a reusable Handlebars template.
@@ -92,14 +90,14 @@
             },
 
             create: function (container) {
-                    // Adds CSS class to the container node.
-                    return Y.one(container);//.addClass('home-page');
+                // Adds CSS class to the container node.
+                return Y.one(container);//.addClass('home-page');
             },
 
             render: function () {
                 // Retrieves just the `login` of the `User` model instance and applies
                 // it to the HomePage Template.
-                var user    = this.get('model'),
+                var user = this.get('model'),
                     content = this.template(user);
 
                 // Sets the resulting HTML as the contents of this view's container.
@@ -114,8 +112,8 @@
             changeUser: function (e) {
                 e.preventDefault();
                 var login = this.get('container').one('input[name="login"]').get('value'),
-                password = this.get('container').one('input[name="password"]').get('value'),
-                country = this.get('container').one('select[name="country"]').get('value');
+                    password = this.get('container').one('input[name="password"]').get('value'),
+                    country = this.get('container').one('select[name="country"]').get('value');
                 if (login && password) {
                     var context = {login: login, password: password, country: country};
                     this.fire('changeUser', context);
@@ -129,9 +127,9 @@
                 loginForm: {
                     type: loginFormView
                 },
-				userPage: {
-					type: userPageView
-				}
+                userPage: {
+                    type: userPageView
+                }
             },
             initializer: function () {
                 // When a user navigates to different "pages" within our app, the
@@ -156,17 +154,18 @@
                 });
             },
             indicateLoading: function (e) {
-				var activeView = this.get('activeView');
-				if(activeView)
-                	activeView.get('container').addClass('loading');
+                var activeView = this.get('activeView');
+                if (activeView) {
+                    activeView.get('container').addClass('loading');
+                }
             },
             // This is called when the URL is "/" and will show our app's home page.
             showHomePage: function (req) {
                 this.showView('loginForm', {model: this.get('user')});
             },
 
-            showUserPage: function(req) {
-				this.showView('userPage', {model: this.get('user')});
+            showUserPage: function (req) {
+                this.showView('userPage', {model: this.get('user')});
             },
 
             // When called, this will navigate the application to the user-page for the
@@ -174,8 +173,8 @@
             // dispatch to its route-handlers along with updating the URL.
             navigateToUser: function (e) {
                 var options = null;
-                var query = Y.QueryString.stringify({login:e.login,password:e.password,country:e.country});
-                this.navigate('login?'+query, options);
+                var query = Y.QueryString.stringify({login: e.login, password: e.password, country: e.country});
+                this.navigate('login?' + query, options);
             },
 
             /**
@@ -185,13 +184,13 @@
              * @param res
              * @param next
              */
-            handleSession: function(req,res,next) {
+            handleSession: function (req, res, next) {
                 var q = req.query;
                 var user = this.get('user');
                 user.session = q['session-handle-part'];
                 this.set('user', user);
                 Y.log(q['session-handle-part']);
-				this.navigate('user', {replace:true});
+                this.navigate('user', {replace: true});
             },
 
             /**
@@ -203,83 +202,74 @@
              * @param res
              * @param next
              */
-            handleLogin: function(req, res, next) {
-                var pl = {'sysvar':1,
-                    'country-id':req.query.country,
-                    'webapi-key':appConfig.apiKey
+            handleLogin: function (req, res, next) {
+                var pl = {'sysvar': 1,
+                    'country-id': req.query.country,
+                    'webapi-key': appConfig.apiKey
                 }, self = this;
 
-                soap.call({method:'doQuerySysStatus', 'params': pl, on: {
-                    success: function(e) {
+                soap.call({method: 'doQuerySysStatus', 'params': pl, on: {
+                    success: function (e) {
                         var result = e.result;
                         var pl = {
-                            'user-login':req.query.login
-                            ,'user-password':req.query.password
-                            ,'country-code':req.query.country
-                            ,'webapi-key':appConfig.apiKey
-                            ,'local-version':result['ver-key']
+                            'user-login': req.query.login, 'user-password': req.query.password, 'country-code': req.query.country, 'webapi-key': appConfig.apiKey, 'local-version': result['ver-key']
                         };
-                        soap.call({method:'doLogin', params: pl, on: {
-                            success: function(e) {
-                                self.set('user', {login:pl['user-login'], country: pl['country-code']});
+                        soap.call({method: 'doLogin', params: pl, on: {
+                            success: function (e) {
+                                self.set('user', {login: pl['user-login'], country: pl['country-code']});
                                 var query = Y.QueryString.stringify(e.result);
-                                self.navigate('session?'+query, {replace:true});
+                                self.navigate('session?' + query, {replace: true});
                             },
-                            failure: function(e) {
+                            failure: function (e) {
                                 Y.log(e.response.statusText);
                             }
                         }});
                     },
-                    failure:function(e) {
-                        if(e.error)
-                        {
+                    failure: function (e) {
+                        if (e.error) {
                             Y.log(e.error.faultactor, 'error', 'allegroApp');
                             Y.log(e.error.faultcode, 'error', 'allegroApp');
                             Y.log(e.error.faultstring, 'error', 'allegroApp');
                         }
-                        if(e.response.statusText)
+                        if (e.response && e.response.statusText) {
                             Y.log(e.response.statusText);
-                        else
+                        }
+                        else {
                             Y.log('doQuerySysStatus failed');
+                        }
                     }}
                 });
             },
 
-			handleUser: function(req, res, next) {
-				this.showUserPage(req);
-			}
+            handleUser: function (req, res, next) {
+                this.showUserPage(req);
+            }
         }, {
             ATTRS: {
                 routes: {
                     value: [
-                        {path: '/',                     callback: 'showHomePage'},
-                        {path: /^\/login?.*$/,          callback: 'handleLogin'},
-                        {path: /^\/session?.*$/,        callback: 'handleSession'},
-						{path: '/user',					callback: 'handleUser'}
+                        {path: '/', callback: 'showHomePage'},
+                        {path: /^\/login?.*$/, callback: 'handleLogin'},
+                        {path: /^\/session?.*$/, callback: 'handleSession'},
+                        {path: '/user', callback: 'handleUser'}
                     ]
                 },
 
-                user: { value: {'login':'',password:''}}
+                user: { value: {'login': '', password: ''}}
             }
         });
 
-        Y.on('allegroApp:ready', function() {
+        Y.on('allegroApp:ready', function () {
             Y.log('allegroApp:ready');
             new allegroApp({
                 // We force this to false for this example app because there is no server.
-                serverRouting: false
-                ,root: baseURL
-                ,container   : '#allegroApp'
-                ,linkSelector: '#allegroApp a'
-                ,user : {'login':'fkowal-api',password:'qwe123'}
+                serverRouting: false, root: baseURL, container: '#allegroApp', linkSelector: '#allegroApp a', user: {'login': 'fkowal-api', password: 'qwe123'}
             }).render();
         });
-        if(soapCfg.xdr.use == 'native')
-        {
+        if (soapCfg.xdr.use === 'native') {
             Y.fire('allegroApp:ready', {});
         }
-        else
-        {
+        else {
             Y.on('io:xdrReady', function (e) {
                 Y.log('io:xdrReady', 'info', 'example');
 
@@ -287,7 +277,6 @@
             });
         }
         new Y.Console().render('#console');
-
     });
 </script>
 </body>
